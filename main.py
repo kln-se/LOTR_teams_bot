@@ -7,6 +7,8 @@ from telebot.types import BotCommand
 import teams
 import rating
 import plots
+import logging
+import time
 
 config = ConfigParser()
 config.read('config.ini')
@@ -76,8 +78,8 @@ def poll_handler(message):
             question='Кто будет сегодня играть?',
             options=['☑️ Буду, как обычно в 22:00',
                      '🤔 Буду, но точное время пока не могу сказать',
-                     '🌅 Давайте пораньше',
-                     '🌄 Давайте попозже',
+                     '🕑 Предложу другое время (напишу ниже)',
+                     '🤡 Пока не знаю, если будет настроение к 22:00',
                      '🙅‍♂️ Сегодня не смогу'],
             is_anonymous=False,
             allows_multiple_answers=True,
@@ -291,5 +293,12 @@ def check_admin_list(user_id) -> bool:
 
 
 if __name__ == "__main__":
-    print("bot started...")
-    bot.polling(none_stop=True, interval=1)
+    logging.basicConfig(filename='errors.log', level=logging.ERROR)
+    while True:
+        time.sleep(5)
+        try:
+            print("bot started...")
+            bot.polling(none_stop=True, interval=1)
+        except Exception as e:
+            logging.exception(e)
+
