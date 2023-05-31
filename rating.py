@@ -25,12 +25,12 @@ def load_df(path):
     return df
 
 
-def add_record(df, datetime, contributor_id, winners, map='-'):
+def add_record(df, datetime, contributor_id, winners, game_map='-'):
     """Добавить запись в df"""
     temp_record = {
         "datetime": datetime,
         "contributor_id": contributor_id,
-        "map": map
+        "map": game_map
     }
 
     # Самая первая запись в df
