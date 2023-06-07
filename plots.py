@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
 from matplotlib import dates as md
+from matplotlib import rcParams
 
 
 def plot_statistics(df, players):
@@ -46,6 +46,7 @@ def plot_statistics(df, players):
 
     # Plot
     ax1.bar(x_labels, y, width=0.4, color=colors, hatch=hatches, edgecolor='black')
-    ax2.plot(df['datetime'], df.iloc[:, 3:], marker='o', markerfacecolor='none', linestyle='-')
+    for i in range(len(df.columns) - 3):
+        ax2.plot(df['datetime'], df.iloc[:, i + 3], marker='o', linestyle='-', markerfacecolor='none', color=colors[i])
 
     fig.savefig('statistics_data/statistics.png', dpi=300, bbox_inches='tight')
