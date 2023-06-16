@@ -1,10 +1,9 @@
-from bot import bot, get_last_cmd
-from parse_config import get_players
-from rating import add_record
-from teams import choose_team_num
 from telebot import types
+from src.bot import get_bot
+from src.parse_config import get_players
+from src.storage import MemoryStorage
 
-chosen_players = {}
+bot = get_bot()
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'choose_players_btn')
@@ -13,16 +12,14 @@ def handle_choose_players_btn(call):
 
 
 def choose_players(message):
-    global chosen_players
-
     players = get_players()
-    chosen_players = {}
+    MemoryStorage.get_instance(message.chat.id).chosen_players = {}
 
     keyboard = types.InlineKeyboardMarkup()
     for player_id in players:
         temp_btn = types.InlineKeyboardButton(text="☐ " + players[player_id][1], callback_data=str(player_id))
         keyboard.add(temp_btn)
-        chosen_players[str(player_id)] = False
+        MemoryStorage.get_instance(message.chat.id).chosen_players[str(player_id)] = False
     finish_players_choice_btn = types.InlineKeyboardButton(text="«Готово»", callback_data='finish_players_choice_btn')
     keyboard.add(finish_players_choice_btn)
 
@@ -31,16 +28,18 @@ def choose_players(message):
                      reply_markup=keyboard)
 
 
-@bot.callback_query_handler(func=lambda call: call.data in chosen_players)
+@bot.callback_query_handler(
+    func=lambda call: call.data in MemoryStorage.get_instance(call.message.chat.id).chosen_players)
 def handle_player_choice(call):
-    global chosen_players
-
     players = get_players()
-    chosen_players[call.data] = True
+    if MemoryStorage.get_instance(call.message.chat.id).chosen_players[call.data]:
+        MemoryStorage.get_instance(call.message.chat.id).chosen_players[call.data] = False
+    else:
+        MemoryStorage.get_instance(call.message.chat.id).chosen_players[call.data] = True
 
     updated_keyboard = types.InlineKeyboardMarkup()
-    for player_id in chosen_players:
-        if chosen_players[player_id]:
+    for player_id in MemoryStorage.get_instance(call.message.chat.id).chosen_players:
+        if MemoryStorage.get_instance(call.message.chat.id).chosen_players[player_id]:
             temp_btn = types.InlineKeyboardButton(
                 text="☑ " + players[int(player_id)][1],
                 callback_data=player_id)
@@ -60,12 +59,8 @@ def handle_player_choice(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'finish_players_choice_btn')
 def handle_finish_players_choice_btn(call):
-    global chosen_players
-
-    last_cmd = get_last_cmd()
-    if last_cmd == 'propose_teams':
-        choose_team_num(call.message, chosen_players)
-        chosen_players = {}
-    elif last_cmd == 'add_record':
-        add_record(call.message, chosen_players)
-        chosen_players = {}
+    callback_func = MemoryStorage.get_instance(call.message.chat.id).callback_func_ref
+    if callback_func:
+        callback_func(call.message, MemoryStorage.get_instance(call.message.chat.id).chosen_players)
+    else:
+        bot.reply_to(call.message, 'Команда не определена. Выберите команду из списка /help.')

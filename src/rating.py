@@ -1,10 +1,13 @@
 import datetime as dt
 import pandas as pd
-from access import check_white_list
-from bot import bot, set_last_cmd
-from choose_players import choose_players
-from parse_config import get_players
-from plots import plot_statistics
+from src.access import check_white_list, check_admin_list
+from src.bot import get_bot
+from src.choose_players import choose_players
+from src.parse_config import get_players
+from src.plots import plot_statistics
+from src.storage import MemoryStorage
+
+bot = get_bot()
 
 
 @bot.message_handler(commands=['rating'])
@@ -18,8 +21,14 @@ def rating_handler(message):
 @bot.message_handler(commands=['add_record'])
 def add_record_handler(message):
     if check_white_list(message.from_user.id):
-        set_last_cmd('add_record')
+        MemoryStorage.get_instance(message.chat.id).callback_func_ref = add_record
         choose_players(message)
+
+
+@bot.message_handler(commands=['delete_record'])
+def delete_last_record_handler(message):
+    if check_admin_list(message.from_user.id):
+        delete_last_record(message)
 
 
 def create_df(players):
@@ -54,6 +63,24 @@ def add_record(message, winners):
         bot.send_message(chat_id=message.chat.id, text='Запись добавлена.')
     else:
         bot.send_message(chat_id=message.chat.id, text='Выберите победителей, текущий список пуст.')
+
+
+def delete_last_record(message):
+    df = load_df('statistics_data/statistics.csv')
+    if len(df):
+        series_to_delete = df.iloc[-1]
+        df = df.drop(index=df.index[-1])
+        save_df(df, 'statistics_data/statistics.csv')
+        if message.from_user.username:
+            bot.send_message(chat_id=message.chat.id,
+                             text='@{0} удалил запись добавленную пользователем с id={1} в {2}.'.format(
+                                 message.from_user.username, series_to_delete[1], series_to_delete[0]))
+        else:
+            bot.send_message(chat_id=message.chat.id,
+                             text='{0} удалил запись добавленную пользователем с id={1} в {2}.'.format(
+                                 message.from_user.id, series_to_delete[1], series_to_delete[0]))
+    else:
+        bot.send_message(chat_id=message.chat.id, text='Статистика не содержит записей.')
 
 
 def create_record(df, datetime, contributor_id, winners, game_map='-'):

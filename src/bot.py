@@ -1,12 +1,10 @@
 import telebot
-from access import check_white_list
-from parse_config import get_token
 from telebot.types import BotCommand
-
+import src.storage
+from src.access import check_white_list
+from src.parse_config import get_token
 
 bot = telebot.TeleBot(get_token())
-
-last_cmd = None
 
 start_prompt = '''Этот бот создан для участников чата «Властелин Котец👑» и выполняет следующие функции:
 ✔ Старт опроса о следующей игре;
@@ -22,7 +20,7 @@ cmds_list = [
     BotCommand(description='Выбрать игроков для рассылки уведомлений об игре;', command='/tag_players'),
     BotCommand(description='Завершить рассылку уведомлений об игре игрокам;', command='/stop_tag_players'),
     BotCommand(description='Начало работы с ботом, обновление команд бота;', command='/start'),
-    BotCommand(description='Список всех команд, доступных боту;', command='/help')
+    BotCommand(description='Список открытых команд, доступных боту;', command='/help')
 ]
 
 cmds = ''.join([f'{cmd.command} - {cmd.description}\n' for cmd in cmds_list])
@@ -51,10 +49,6 @@ def discord_handler(message):
         bot.reply_to(message, 'https://discord.gg/BsQrgxPZ')
 
 
-def get_last_cmd():
-    return last_cmd
-
-
-def set_last_cmd(cmd: str):
-    global last_cmd
-    last_cmd = cmd
+def get_bot():
+    global bot
+    return bot

@@ -5,7 +5,7 @@ from matplotlib import rcParams
 
 def plot_statistics(df, players):
     """Рисует картинку statistics.png на основе данных в statistics.csv."""
-    rcParams['font.family'] = 'sans-serif'  # 'fantasy', 'monospace', 'sans', 'sans serif', 'sans-serif', 'serif'
+    rcParams['font.family'] = 'sans-serif'
     rcParams['font.size'] = 8
 
     fig = plt.figure(figsize=(10, 8))

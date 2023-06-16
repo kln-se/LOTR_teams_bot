@@ -1,5 +1,7 @@
-from access import check_white_list, check_admin_list
-from bot import bot
+from src.access import check_white_list, check_admin_list
+from src.bot import get_bot
+
+bot = get_bot()
 
 
 @bot.message_handler(commands=['tag_players'])

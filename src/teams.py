@@ -1,21 +1,18 @@
 import random
 from telebot import types
+import src.choose_players
+from src.access import check_white_list
+from src.bot import get_bot
+from src.parse_config import get_players
+from src.storage import MemoryStorage
 
-# My imports
-from access import check_white_list
-from bot import bot, set_last_cmd
-from parse_config import get_players
-
-
-teams_count = None
-chosen_players_names = {}
+bot = get_bot()
 
 
 @bot.message_handler(commands=['propose_teams'])
 def propose_teams_handler(message):
     if check_white_list(message.from_user.id):
-
-        set_last_cmd('propose_teams')
+        MemoryStorage.get_instance(message.chat.id).callback_func_ref = choose_team_num
 
         keyboard = types.InlineKeyboardMarkup()
         choose_players_btn = types.InlineKeyboardButton(text='Выбрать игроков', callback_data='choose_players_btn')
@@ -28,42 +25,43 @@ def propose_teams_handler(message):
 
 @bot.callback_query_handler(func=lambda call: call.data in ['teams_2_btn', 'teams_3_btn', 'teams_4_btn'])
 def handle_teams_x_btn(call):
-    global chosen_players_names
-    global teams_count
-
     if call.data == 'teams_2_btn':
-        teams_count = 2
+        MemoryStorage.get_instance(call.message.chat.id).teams_count = 2
         keyboard = types.InlineKeyboardMarkup()
         regen_teams_btn = types.InlineKeyboardButton(text='Пересоздать команды', callback_data='regen_teams_btn')
         keyboard.add(regen_teams_btn)
         bot.send_message(chat_id=call.message.chat.id,
-                         text=create_random_teams(chosen_players_names.copy(), teams_count),
+                         text=create_random_teams(
+                             MemoryStorage.get_instance(call.message.chat.id).chosen_players_names.copy(),
+                             MemoryStorage.get_instance(call.message.chat.id).teams_count),
                          reply_markup=keyboard)
     elif call.data == 'teams_3_btn':
-        teams_count = 3
+        MemoryStorage.get_instance(call.message.chat.id).teams_count = 3
         keyboard = types.InlineKeyboardMarkup()
         regen_teams_btn = types.InlineKeyboardButton(text='Пересоздать команды', callback_data='regen_teams_btn')
         keyboard.add(regen_teams_btn)
         bot.send_message(chat_id=call.message.chat.id,
-                         text=create_random_teams(chosen_players_names.copy(), teams_count),
+                         text=create_random_teams(
+                             MemoryStorage.get_instance(call.message.chat.id).chosen_players_names.copy(),
+                             MemoryStorage.get_instance(call.message.chat.id).teams_count),
                          reply_markup=keyboard)
 
     elif call.data == 'teams_4_btn':
-        teams_count = 4
+        MemoryStorage.get_instance(call.message.chat.id).teams_count = 4
         keyboard = types.InlineKeyboardMarkup()
         regen_teams_btn = types.InlineKeyboardButton(text='Пересоздать команды', callback_data='regen_teams_btn')
         keyboard.add(regen_teams_btn)
         bot.send_message(chat_id=call.message.chat.id,
-                         text=create_random_teams(chosen_players_names.copy(), teams_count),
+                         text=create_random_teams(
+                             MemoryStorage.get_instance(call.message.chat.id).chosen_players_names.copy(),
+                             MemoryStorage.get_instance(call.message.chat.id).teams_count),
                          reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'regen_teams_btn')
 def handle_regen_teams_btn(call):
-    global chosen_players_names
-    global teams_count
-
-    if not teams_count or not chosen_players_names:
+    if not MemoryStorage.get_instance(call.message.chat.id).teams_count or not MemoryStorage.get_instance(
+            call.message.chat.id).chosen_players_names:
         bot.send_message(chat_id=call.message.chat.id,
                          text='Сначала необходимо выбрать игроков и количество команд.')
     else:
@@ -71,21 +69,21 @@ def handle_regen_teams_btn(call):
         regen_teams_btn = types.InlineKeyboardButton(text='Пересоздать команды', callback_data='regen_teams_btn')
         keyboard.add(regen_teams_btn)
         bot.send_message(chat_id=call.message.chat.id,
-                         text=create_random_teams(chosen_players_names.copy(), teams_count),
+                         text=create_random_teams(
+                             MemoryStorage.get_instance(call.message.chat.id).chosen_players_names.copy(),
+                             MemoryStorage.get_instance(call.message.chat.id).teams_count),
                          reply_markup=keyboard)
 
 
 def choose_team_num(message, players_to_play):
-    global teams_count
-    global chosen_players_names
-
-    chosen_players_names = {}
-    teams_count = None
+    MemoryStorage.get_instance(message.chat.id).chosen_players_names = {}
+    MemoryStorage.get_instance(message.chat.id).teams_count = None
 
     players = get_players()
     for player_id in players_to_play:
         if players_to_play[player_id]:
-            chosen_players_names[int(player_id)] = players[int(player_id)][1]
+            MemoryStorage.get_instance(message.chat.id).chosen_players_names[int(player_id)] = players[int(player_id)][
+                1]
 
     keyboard = types.InlineKeyboardMarkup()
     teams_2_btn = types.InlineKeyboardButton(text='2', callback_data='teams_2_btn')
@@ -94,7 +92,8 @@ def choose_team_num(message, players_to_play):
     keyboard.add(teams_2_btn, teams_3_btn, teams_4_btn)
 
     bot.send_message(chat_id=message.chat.id,
-                     text=f'Количество игроков: {len(chosen_players_names)}. Сколько будет команд?:',
+                     text='Количество игроков: {0}. Сколько будет команд?'.format(
+                         len(MemoryStorage.get_instance(message.chat.id).chosen_players_names)),
                      reply_markup=keyboard)
 
 
