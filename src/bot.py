@@ -1,6 +1,5 @@
 import telebot
 from telebot.types import BotCommand
-import src.storage
 from src.access import check_white_list
 from src.parse_config import get_token
 

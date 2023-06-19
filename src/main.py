@@ -6,7 +6,6 @@ import src.rating
 import src.teams
 from src.bot import get_bot
 
-
 if __name__ == "__main__":
     logging.basicConfig(filename='errors.log', level=logging.ERROR)
     while True:

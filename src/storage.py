@@ -11,8 +11,9 @@ class MemoryStorage:
         self.chosen_players = {}
 
         # teams.py
-        self.chosen_players_names = {}
+        self.players_to_play = {}
         self.teams_count = None
+        self.consider_rating = False
 
         # poll.py
         self.last_poll_results = {}

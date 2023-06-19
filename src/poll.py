@@ -19,7 +19,7 @@ def poll_handler(message):
                      '🤡 Пока не знаю, если будет настроение к 22:00',
                      '🙅‍♂️ Сегодня не смогу'],
             is_anonymous=False,
-            allows_multiple_answers=True,
+            allows_multiple_answers=False,
             close_date=datetime.combine(datetime.today().date(), datetime.min.time()),
             reply_to_message_id=message.id
         )
@@ -32,7 +32,7 @@ def poll_handler(message):
     if check_white_list(message.from_user.id):
         bot.send_poll(
             chat_id=message.chat.id,
-            question='Сегодня клоунов не будет))) Кто будет сегодня играть в ВК? Голосуют все!!!',
+            question='Сегодня клоунов не будет))) Кто будет сегодня играть в ВК? Голосуют все!!!\n©Дмитро',
             options=['👍 Буду, если наберётся хотя бы 5 человек',
                      '👎 Не буду, но ниже напишу причину того, почему я пропускаю такие важные катки в ВК)'],
             is_anonymous=False,
@@ -52,11 +52,13 @@ def handle_last_poll_participants_btn(call):
                 polled_players[player_id] = True
 
         bot.send_message(chat_id=call.message.chat.id,
-                         text=f'Судя по опросу игроков будет: *{len(polled_players)}*',
+                         text=f'Судя по опросу игроков будет: *{len(polled_players)}* '
+                              f'(проголосовали за любой из вариантов ответа "Буду, ...")',
                          parse_mode='Markdown')
         choose_team_num(call.message, polled_players)
     else:
-        bot.send_message(chat_id=call.message.chat.id, text='Опросный лист пуст или никто не проголосвал "Буду...". Создайте новый опрос.')
+        bot.send_message(chat_id=call.message.chat.id,
+                         text='Опросный лист пуст. Создайте новый опрос.')
 
 
 @bot.poll_answer_handler()
