@@ -3,27 +3,27 @@ import math
 import random
 from telebot import types
 import src.choose_players  # Используется callback 'choose_players_btn'
-from src.access import check_white_list
-from src.bot import get_bot
+from src.access import check_white_list_decorator
+from src.bot import get_bot_instance
 from src.parse_config import get_players
 from src.rating import load_df
 from src.storage import MemoryStorage
 
-bot = get_bot()
+bot = get_bot_instance()
 
 
 @bot.message_handler(commands=['propose_teams'])
+@check_white_list_decorator(bot_instance=bot)
 def propose_teams_handler(message):
-    if check_white_list(message.from_user.id):
-        MemoryStorage.get_instance(message.chat.id).callback_func_ref = choose_team_num
+    MemoryStorage.get_instance(message.chat.id).callback_func_ref = choose_team_num
 
-        keyboard = types.InlineKeyboardMarkup()
-        choose_players_btn = types.InlineKeyboardButton(text='Выбрать игроков', callback_data='choose_players_btn')
-        last_poll_participants_btn = types.InlineKeyboardButton(text='Участники последнего опроса',
-                                                                callback_data='last_poll_participants_btn')
-        keyboard.add(choose_players_btn, last_poll_participants_btn)
+    keyboard = types.InlineKeyboardMarkup()
+    choose_players_btn = types.InlineKeyboardButton(text='Выбрать игроков', callback_data='choose_players_btn')
+    last_poll_participants_btn = types.InlineKeyboardButton(text='Участники последнего опроса',
+                                                            callback_data='last_poll_participants_btn')
+    keyboard.add(choose_players_btn, last_poll_participants_btn)
 
-        bot.send_message(chat_id=message.chat.id, text='Кто будет в командах?', reply_markup=keyboard)
+    bot.send_message(chat_id=message.chat.id, text='Кто будет в командах?', reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: call.data in ['teams_2_btn', 'teams_3_btn', 'teams_4_btn'])

@@ -1,34 +1,34 @@
 import datetime as dt
 import pandas as pd
-from src.access import check_white_list, check_admin_list
-from src.bot import get_bot
+from src.access import check_white_list_decorator, check_admin_list_decorator
+from src.bot import get_bot_instance
 from src.choose_players import choose_players
 from src.parse_config import get_players
 from src.plots import plot_statistics
 from src.storage import MemoryStorage
 
-bot = get_bot()
+bot = get_bot_instance()
 
 
 @bot.message_handler(commands=['rating'])
+@check_white_list_decorator(bot_instance=bot)
 def rating_handler(message):
-    if check_white_list(message.from_user.id):
-        plot_statistics(load_df('statistics_data/statistics.csv'), get_players())
-        with open('statistics_data/statistics.png', 'rb') as photo:
-            bot.send_photo(message.chat.id, photo)
+    plot_statistics(load_df('statistics_data/statistics.csv'), get_players())
+    with open('statistics_data/statistics.png', 'rb') as photo:
+        bot.send_photo(message.chat.id, photo)
 
 
 @bot.message_handler(commands=['add_record'])
+@check_white_list_decorator(bot_instance=bot)
 def add_record_handler(message):
-    if check_white_list(message.from_user.id):
-        MemoryStorage.get_instance(message.chat.id).callback_func_ref = add_record
-        choose_players(message)
+    MemoryStorage.get_instance(message.chat.id).callback_func_ref = add_record
+    choose_players(message)
 
 
 @bot.message_handler(commands=['delete_record'])
+@check_admin_list_decorator(bot_instance=bot)
 def delete_last_record_handler(message):
-    if check_admin_list(message.from_user.id):
-        delete_last_record(message)
+    delete_last_record(message)
 
 
 def create_df(players):

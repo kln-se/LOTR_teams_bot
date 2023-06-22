@@ -1,9 +1,9 @@
 from telebot import types
-from src.bot import get_bot
+from src.bot import get_bot_instance
 from src.parse_config import get_players
 from src.storage import MemoryStorage
 
-bot = get_bot()
+bot = get_bot_instance()
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'choose_players_btn')

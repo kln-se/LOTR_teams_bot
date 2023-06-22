@@ -10,6 +10,9 @@ class MemoryStorage:
         # choose_players.py
         self.chosen_players = {}
 
+        # tag_players.py
+        self.subscribers = {}
+
         # teams.py
         self.players_to_play = {}
         self.teams_count = None
