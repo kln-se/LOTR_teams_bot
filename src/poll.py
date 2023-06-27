@@ -56,12 +56,17 @@ def handle_last_poll_participants_btn(call):
             if 0 in MemoryStorage.get_instance(call.message.chat.id).last_poll_results[player_id] or 1 in \
                     MemoryStorage.get_instance(call.message.chat.id).last_poll_results[player_id]:
                 polled_players[player_id] = True
+            else:
+                polled_players[player_id] = False
 
         bot.send_message(chat_id=call.message.chat.id,
                          text=f'Судя по опросу игроков будет: *{len(polled_players)}* '
                               f'(проголосовали за любой из вариантов ответа "Буду, ...")',
                          parse_mode='Markdown')
-        choose_team_num(call.message, polled_players)
+
+        callback_func = MemoryStorage.get_instance(call.message.chat.id).callback_func_ref
+        if callback_func:
+            callback_func(call.message, polled_players)
     else:
         bot.send_message(chat_id=call.message.chat.id,
                          text='Опросный лист пуст. Создайте новый опрос.')

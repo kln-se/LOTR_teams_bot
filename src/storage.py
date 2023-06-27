@@ -11,7 +11,12 @@ class MemoryStorage:
         self.chosen_players = {}
 
         # tag_players.py
-        self.subscribers = {}
+        self.subscribed_players = {}
+        self.not_polled_players = {}
+        self.ready_to_play_players = {}
+        self.jobs_id = {}
+        self.notification_thread = None
+        self.stop_event = None
 
         # teams.py
         self.players_to_play = {}

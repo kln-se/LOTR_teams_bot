@@ -17,7 +17,7 @@ cmds_list = [
     BotCommand(description='Инфографика с текущим рейтингом игроков;', command='/rating'),
     BotCommand(description='Добавить запись об игре и её результатах в статистику;', command='/add_record'),
     BotCommand(description='Выбрать игроков для рассылки уведомлений об игре;', command='/tag_players'),
-    BotCommand(description='Завершить рассылку уведомлений об игре игрокам;', command='/stop_tag_players'),
+    BotCommand(description='Завершить рассылку уведомлений об игре игрокам;', command='/stop_all_notifications'),
     BotCommand(description='Начало работы с ботом, обновление команд бота;', command='/start'),
     BotCommand(description='Список открытых команд, доступных боту;', command='/help'),
     BotCommand(description='Ссылка на канал в Discord;', command='/discord'),

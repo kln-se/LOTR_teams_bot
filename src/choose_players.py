@@ -62,7 +62,7 @@ def handle_player_choice(call):
 def handle_finish_players_choice_btn(call):
     callback_func = MemoryStorage.get_instance(call.message.chat.id).callback_func_ref
     if callback_func:
-        callback_func(call.message, MemoryStorage.get_instance(call.message.chat.id).chosen_players)
+        callback_func(call, MemoryStorage.get_instance(call.message.chat.id).chosen_players)
     else:
         bot.reply_to(call.message, 'Команда не определена. Выберите команду из списка /help.')
 

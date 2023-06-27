@@ -55,15 +55,15 @@ def load_df(path):
     return df
 
 
-def add_record(message, chosen_players):
+def add_record(call, chosen_players):
     if chosen_players:
         df = load_df('statistics_data/statistics.csv')
-        create_record(df, dt.datetime.now(), message.from_user.id, chosen_players)
+        create_record(df, dt.datetime.now(), call.from_user.id, chosen_players)
         save_df(df, 'statistics_data/statistics.csv')
-        MemoryStorage.get_instance(message.chat.id).chosen_players = {}
-        bot.send_message(chat_id=message.chat.id, text='Запись добавлена, список выбранных игроков очищен.')
+        MemoryStorage.get_instance(call.message.chat.id).chosen_players = {}
+        bot.send_message(chat_id=call.message.chat.id, text='Запись добавлена, список выбранных игроков очищен.')
     else:
-        bot.send_message(chat_id=message.chat.id, text='Выберите победителей, текущий список пуст.')
+        bot.send_message(chat_id=call.message.chat.id, text='Выберите победителей, текущий список пуст.')
 
 
 def delete_last_record(message):

@@ -105,16 +105,16 @@ def handle_regen_teams_btn(call):
                          parse_mode='Markdown')
 
 
-def choose_team_num(message, chosen_players):
-    MemoryStorage.get_instance(message.chat.id).teams_count = None
-    MemoryStorage.get_instance(message.chat.id).players_to_play = chosen_players
+def choose_team_num(call, chosen_players):
+    MemoryStorage.get_instance(call.message.chat.id).teams_count = None
+    MemoryStorage.get_instance(call.message.chat.id).players_to_play = chosen_players
 
     players_count = sum(chosen_players.values())
 
     if players_count < 2:
-        bot.send_message(chat_id=message.chat.id,
+        bot.send_message(chat_id=call.message.chat.id,
                          text=f'Недостаточно игроков. '
-                              f'Текущее количество выбранных игроков: *{players_count}* (необходимо 2 и более).',
+                              f'Текущее количество выбранных игроков: *{players_count}* (необходимо 2 и более)',
                          parse_mode='Markdown')
     else:
         keyboard = types.InlineKeyboardMarkup()
@@ -123,7 +123,7 @@ def choose_team_num(message, chosen_players):
         teams_4_btn = types.InlineKeyboardButton(text='4', callback_data='teams_4_btn')
         keyboard.add(teams_2_btn, teams_3_btn, teams_4_btn)
 
-        bot.send_message(chat_id=message.chat.id,
+        bot.send_message(chat_id=call.message.chat.id,
                          text='Количество игроков: {0}. Сколько будет команд?'.format(players_count),
                          reply_markup=keyboard)
 

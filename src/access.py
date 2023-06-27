@@ -29,11 +29,3 @@ def check_admin_list_decorator(bot_instance):
         return inner_wrapper
 
     return wrapper
-
-
-def check_white_list(user_id: int) -> bool:
-    return user_id in get_white_list()
-
-
-def check_admin_list(user_id: int) -> bool:
-    return user_id in get_admin_list()
