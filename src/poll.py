@@ -26,7 +26,9 @@ def poll_handler(message):
     MemoryStorage.polls_locations[poll.poll.id] = message.chat.id
     MemoryStorage.get_instance(message.chat.id).last_poll_results = {}
 
-    bot.unpin_chat_message(message.chat.id)
+    if MemoryStorage.get_instance(message.chat.id).last_poll_message_id:
+        bot.unpin_chat_message(message.chat.id, MemoryStorage.get_instance(message.chat.id).last_poll_message_id)
+    MemoryStorage.get_instance(message.chat.id).last_poll_message_id = poll.message_id
     bot.pin_chat_message(message.chat.id, poll.message_id)
 
 
@@ -44,7 +46,9 @@ def poll_handler(message):
         reply_to_message_id=message.id
     )
 
-    bot.unpin_chat_message(message.chat.id)
+    if MemoryStorage.get_instance(message.chat.id).last_poll_message_id:
+        bot.unpin_chat_message(message.chat.id, MemoryStorage.get_instance(message.chat.id).last_poll_message_id)
+    MemoryStorage.get_instance(message.chat.id).last_poll_message_id = poll.message_id
     bot.pin_chat_message(message.chat.id, poll.message_id)
 
 
