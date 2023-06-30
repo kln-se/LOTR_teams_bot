@@ -2,7 +2,7 @@ import copy
 import math
 import random
 from telebot import types
-import src.choose_players  # Используется callback 'choose_players_btn'
+import src.choose_players  # Используется callback 'choose_players_btn', callback 'choose_last_poll_participants_btn'
 from src.access import check_white_list_decorator
 from src.bot import get_bot_instance
 from src.parse_config import get_players
@@ -20,7 +20,7 @@ def propose_teams_handler(message):
     keyboard = types.InlineKeyboardMarkup()
     choose_players_btn = types.InlineKeyboardButton(text='Выбрать игроков', callback_data='choose_players_btn')
     last_poll_participants_btn = types.InlineKeyboardButton(text='Участники последнего опроса',
-                                                            callback_data='last_poll_participants_btn')
+                                                            callback_data='choose_last_poll_participants_btn')
     keyboard.add(choose_players_btn, last_poll_participants_btn)
 
     bot.send_message(chat_id=message.chat.id, text='Кто будет в командах?', reply_markup=keyboard)
@@ -41,7 +41,7 @@ def handle_teams_x_btn(call):
             MemoryStorage.get_instance(call.message.chat.id).teams_count > \
             sum(MemoryStorage.get_instance(call.message.chat.id).players_to_play.values()):
         bot.send_message(chat_id=call.message.chat.id,
-                         text='Выбранное количество команд превышает количество игроков.')
+                         text='❗Выбранное количество команд превышает количество игроков.')
     else:
         keyboard = types.InlineKeyboardMarkup()
         ignore_rating_btn = types.InlineKeyboardButton(text='Без учёта рейтинга', callback_data='ignore_rating_btn')
@@ -83,7 +83,7 @@ def handle_consider_players_rating(call):
                              parse_mode='Markdown')
     else:
         bot.send_message(chat_id=call.message.chat.id,
-                         text='Сначала необходимо выбрать игроков и количество команд')
+                         text='❗Сначала необходимо выбрать игроков и количество команд.')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'regen_teams_btn')
@@ -91,7 +91,7 @@ def handle_regen_teams_btn(call):
     if not MemoryStorage.get_instance(call.message.chat.id).teams_count or not sum(MemoryStorage.get_instance(
             call.message.chat.id).players_to_play.values()):
         bot.send_message(chat_id=call.message.chat.id,
-                         text='Сначала необходимо выбрать игроков и количество команд')
+                         text='❗Сначала необходимо выбрать игроков и количество команд.')
     else:
         keyboard = types.InlineKeyboardMarkup()
         regen_teams_btn = types.InlineKeyboardButton(text='Пересоздать команды', callback_data='regen_teams_btn')
@@ -113,8 +113,8 @@ def choose_team_num(call, chosen_players):
 
     if players_count < 2:
         bot.send_message(chat_id=call.message.chat.id,
-                         text=f'Недостаточно игроков. '
-                              f'Текущее количество выбранных игроков: *{players_count}* (необходимо 2 и более)',
+                         text=f'❗Недостаточно игроков.'
+                              f'\nТекущее количество выбранных игроков: *{players_count}* (необходимо 2 и более).',
                          parse_mode='Markdown')
     else:
         keyboard = types.InlineKeyboardMarkup()

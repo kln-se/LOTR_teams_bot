@@ -64,7 +64,7 @@ def handle_finish_players_choice_btn(call):
     if callback_func:
         callback_func(call, MemoryStorage.get_instance(call.message.chat.id).chosen_players)
     else:
-        bot.reply_to(call.message, 'Команда не определена. Выберите команду из списка /help.')
+        bot.reply_to(call.message, '❗️Команда не определена. Выберите команду из списка /help.')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'choose_all_btn')
@@ -87,3 +87,28 @@ def handle_finish_players_choice_btn(call):
     bot.edit_message_reply_markup(call.message.chat.id,
                                   call.message.message_id,
                                   reply_markup=updated_keyboard)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'choose_last_poll_participants_btn')
+def handle_last_poll_participants_btn(call):
+    if MemoryStorage.get_instance(call.message.chat.id).last_poll_results:
+        polled_players = {}
+        for player_id in MemoryStorage.get_instance(call.message.chat.id).last_poll_results:
+            if 0 in MemoryStorage.get_instance(call.message.chat.id).last_poll_results[player_id] or 1 in \
+                    MemoryStorage.get_instance(call.message.chat.id).last_poll_results[player_id]:
+                polled_players[str(player_id)] = True
+            else:
+                polled_players[str(player_id)] = False
+
+        bot.send_message(chat_id=call.message.chat.id,
+                         text=f'Судя по опросу игроков будет: *{len(polled_players)}* '
+                              f'(проголосовали за любой из вариантов ответа "Буду, ...")',
+                         parse_mode='Markdown')
+
+        callback_func = MemoryStorage.get_instance(call.message.chat.id).callback_func_ref
+        if callback_func:
+            callback_func(call, polled_players)
+    else:
+        bot.send_message(chat_id=call.message.chat.id,
+                         text='❗️Опросный лист пуст.\n'
+                              '\nНеобходимо создать новый опрос.')

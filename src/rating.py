@@ -61,9 +61,9 @@ def add_record(call, chosen_players):
         create_record(df, dt.datetime.now(), call.from_user.id, chosen_players)
         save_df(df, 'statistics_data/statistics.csv')
         MemoryStorage.get_instance(call.message.chat.id).chosen_players = {}
-        bot.send_message(chat_id=call.message.chat.id, text='Запись добавлена, список выбранных игроков очищен.')
+        bot.send_message(chat_id=call.message.chat.id, text='❕Запись добавлена, список выбранных игроков очищен.')
     else:
-        bot.send_message(chat_id=call.message.chat.id, text='Выберите победителей, текущий список пуст.')
+        bot.send_message(chat_id=call.message.chat.id, text='❗Выберите победителей, текущий список пуст.')
 
 
 def delete_last_record(message):
@@ -74,14 +74,14 @@ def delete_last_record(message):
         save_df(df, 'statistics_data/statistics.csv')
         if message.from_user.username:
             bot.send_message(chat_id=message.chat.id,
-                             text='@{0} удалил запись добавленную пользователем с id={1} в {2}.'.format(
+                             text='❕@{0} удалил запись добавленную пользователем с id={1} в {2}.'.format(
                                  message.from_user.username, series_to_delete[1], series_to_delete[0]))
         else:
             bot.send_message(chat_id=message.chat.id,
-                             text='{0} удалил запись добавленную пользователем с id={1} в {2}.'.format(
+                             text='❕{0} удалил запись добавленную пользователем с id={1} в {2}.'.format(
                                  message.from_user.id, series_to_delete[1], series_to_delete[0]))
     else:
-        bot.send_message(chat_id=message.chat.id, text='Статистика не содержит записей.')
+        bot.send_message(chat_id=message.chat.id, text='❗Статистика не содержит записей.')
 
 
 def create_record(df, datetime, contributor_id, winners, game_map='-'):

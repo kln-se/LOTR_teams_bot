@@ -8,8 +8,8 @@ def check_white_list_decorator(bot_instance):
                 func(message)
             else:
                 bot_instance.reply_to(message,
-                                      f"Пользователь {message.from_user.username} не авторизован для доступа к данному "
-                                      f"ресурсу.")
+                                      f"❗️Пользователь {message.from_user.username} не авторизован для доступа к "
+                                      f"данному ресурсу.")
 
         return inner_wrapper
 
@@ -23,8 +23,8 @@ def check_admin_list_decorator(bot_instance):
                 func(message)
             else:
                 bot_instance.reply_to(message,
-                                      f"Пользователь {message.from_user.username} не авторизован для доступа к этому "
-                                      f"ресурсу.")
+                                      f"❗️Пользователь {message.from_user.username} не авторизован для доступа к "
+                                      f"данному ресурсу.")
 
         return inner_wrapper
 

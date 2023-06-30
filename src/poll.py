@@ -1,6 +1,9 @@
 from datetime import datetime
+from telebot.apihelper import ApiTelegramException
 from src.access import check_white_list_decorator
 from src.bot import get_bot_instance
+from src.parse_config import get_players
+from src.tag_players import start_tag_not_polled_players, unsubscribe_polled_player
 from src.teams import choose_team_num
 from src.storage import MemoryStorage
 
@@ -25,11 +28,26 @@ def poll_handler(message):
     )
     MemoryStorage.polls_locations[poll.poll.id] = message.chat.id
     MemoryStorage.get_instance(message.chat.id).last_poll_results = {}
+    MemoryStorage.get_instance(message.chat.id).not_polled_players = {}
+    MemoryStorage.get_instance(message.chat.id).last_poll_id = poll.poll.id
 
-    if MemoryStorage.get_instance(message.chat.id).last_poll_message_id:
-        bot.unpin_chat_message(message.chat.id, MemoryStorage.get_instance(message.chat.id).last_poll_message_id)
-    MemoryStorage.get_instance(message.chat.id).last_poll_message_id = poll.message_id
-    bot.pin_chat_message(message.chat.id, poll.message_id)
+    try:
+        if MemoryStorage.get_instance(message.chat.id).last_poll_message_id:
+            bot.unpin_chat_message(message.chat.id, MemoryStorage.get_instance(message.chat.id).last_poll_message_id)
+        else:
+            bot.unpin_all_chat_messages(message.chat.id)
+        MemoryStorage.get_instance(message.chat.id).last_poll_message_id = poll.message_id
+        bot.pin_chat_message(message.chat.id, poll.message_id)
+    except ApiTelegramException as e:
+        bot.send_message(chat_id=message.chat.id,
+                         text='❗Запрос к Telegram API не удался.\n'
+                              '\nВероятно, @LOTR_teams_bot не имеет достаточно прав '
+                              'для управления закрепленными сообщениями в чате.')
+
+    not_polled_players = {}
+    for player_id in get_players():
+        not_polled_players[str(player_id)] = True
+    start_tag_not_polled_players(message, not_polled_players)
 
 
 @bot.message_handler(commands=['no_clowns_poll'])
@@ -46,40 +64,31 @@ def poll_handler(message):
         reply_to_message_id=message.id
     )
 
-    if MemoryStorage.get_instance(message.chat.id).last_poll_message_id:
-        bot.unpin_chat_message(message.chat.id, MemoryStorage.get_instance(message.chat.id).last_poll_message_id)
-    MemoryStorage.get_instance(message.chat.id).last_poll_message_id = poll.message_id
-    bot.pin_chat_message(message.chat.id, poll.message_id)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == 'last_poll_participants_btn')
-def handle_last_poll_participants_btn(call):
-    if MemoryStorage.get_instance(call.message.chat.id).last_poll_results:
-        polled_players = {}
-        for player_id in MemoryStorage.get_instance(call.message.chat.id).last_poll_results:
-            if 0 in MemoryStorage.get_instance(call.message.chat.id).last_poll_results[player_id] or 1 in \
-                    MemoryStorage.get_instance(call.message.chat.id).last_poll_results[player_id]:
-                polled_players[player_id] = True
-            else:
-                polled_players[player_id] = False
-
-        bot.send_message(chat_id=call.message.chat.id,
-                         text=f'Судя по опросу игроков будет: *{len(polled_players)}* '
-                              f'(проголосовали за любой из вариантов ответа "Буду, ...")',
-                         parse_mode='Markdown')
-
-        callback_func = MemoryStorage.get_instance(call.message.chat.id).callback_func_ref
-        if callback_func:
-            callback_func(call.message, polled_players)
-    else:
-        bot.send_message(chat_id=call.message.chat.id,
-                         text='Опросный лист пуст. Создайте новый опрос.')
+    try:
+        if MemoryStorage.get_instance(message.chat.id).last_poll_message_id:
+            bot.unpin_chat_message(message.chat.id, MemoryStorage.get_instance(message.chat.id).last_poll_message_id)
+        else:
+            bot.unpin_all_chat_messages(message.chat.id)
+        MemoryStorage.get_instance(message.chat.id).last_poll_message_id = poll.message_id
+        bot.pin_chat_message(message.chat.id, poll.message_id)
+    except ApiTelegramException as e:
+        bot.send_message(chat_id=message.chat.id,
+                         text='❗Запрос к Telegram API не удался.\n'
+                              '\nВероятно, @LOTR_teams_bot не имеет достаточно прав '
+                              'для управления закрепленными сообщениями в чате.')
 
 
 @bot.poll_answer_handler()
 def handle_poll_answer(poll_answer):
     poll_id = poll_answer.poll_id
-    player_id = poll_answer.user.id
+    user_id = poll_answer.user.id
     option_ids = poll_answer.option_ids
     chat_id = MemoryStorage.get_poll_location(poll_id)
-    MemoryStorage.get_instance(chat_id).last_poll_results[player_id] = option_ids
+    if chat_id:
+        if user_id in get_players().keys():
+            MemoryStorage.get_instance(chat_id).last_poll_results[user_id] = option_ids
+            if poll_id == MemoryStorage.get_instance(chat_id).last_poll_id:
+                unsubscribe_polled_player(chat_id, poll_answer.user)
+            else:
+                bot.send_message(chat_id=chat_id,
+                                 text=f'❗@{poll_answer.user.username} проголосуйте в последнем опросе!')

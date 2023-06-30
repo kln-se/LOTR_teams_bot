@@ -26,6 +26,7 @@ class MemoryStorage:
         # poll.py
         self.last_poll_results = {}
         self.last_poll_message_id = None
+        self.last_poll_id = None
 
         MemoryStorage.instances[chat_id] = self
 
