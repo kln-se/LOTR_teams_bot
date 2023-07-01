@@ -83,12 +83,14 @@ def handle_poll_answer(poll_answer):
     poll_id = poll_answer.poll_id
     user_id = poll_answer.user.id
     option_ids = poll_answer.option_ids
-    chat_id = MemoryStorage.get_poll_location(poll_id)
-    if chat_id:
-        if user_id in get_players().keys():
-            MemoryStorage.get_instance(chat_id).last_poll_results[user_id] = option_ids
-            if poll_id == MemoryStorage.get_instance(chat_id).last_poll_id:
-                unsubscribe_polled_player(chat_id, poll_answer.user)
-            else:
-                bot.send_message(chat_id=chat_id,
-                                 text=f'❗@{poll_answer.user.username} проголосуйте в последнем опросе!')
+    if option_ids:  # При изменении результата (Retract vote) option_ids = []
+        chat_id = MemoryStorage.get_poll_location(poll_id)
+        if chat_id:
+            if user_id in get_players().keys():
+                MemoryStorage.get_instance(chat_id).last_poll_results[user_id] = option_ids
+                if poll_id == MemoryStorage.get_instance(chat_id).last_poll_id:
+                    unsubscribe_polled_player(chat_id, poll_answer.user)
+                else:
+                    bot.send_message(chat_id=chat_id,
+                                     text=f'❗@{poll_answer.user.username} проголосуйте в последнем опросе, '
+                                          f'который закреплён в шапке чата!')
