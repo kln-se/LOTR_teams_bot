@@ -1,6 +1,5 @@
 class MemoryStorage:
-    # Unique instance for each chat
-    instances = {}
+    instances = {}  # unique instance for each chat
     polls_locations = {}
 
     def __init__(self, chat_id):
@@ -14,7 +13,7 @@ class MemoryStorage:
         self.subscribed_players = {}
         self.not_polled_players = {}
         self.ready_to_play_players = {}
-        self.jobs_id = {}
+        self.started_jobs = {}
         self.notification_thread = None
         self.stop_event = None
 

@@ -42,7 +42,8 @@ def tag_players_handler(message):
                                                             callback_data='choose_last_poll_participants_btn')
     keyboard.add(choose_players_btn, last_poll_participants_btn)
 
-    bot.send_message(chat_id=message.chat.id, text='Кто будет в командах?', reply_markup=keyboard)
+    bot.send_message(chat_id=message.chat.id, text='Кого добавить в список рассылки уведомлений?',
+                     reply_markup=keyboard)
 
 
 @bot.message_handler(commands=['stop_all_notifications'])
@@ -55,7 +56,6 @@ def stop_all_notifications_handler(message):
         with lock:
             MemoryStorage.get_instance(message.chat.id).subscribed_players = {}
             MemoryStorage.get_instance(message.chat.id).not_polled_players = {}
-            MemoryStorage.get_instance(message.chat.id).ready_to_play_players = {}
 
         bot.reply_to(message, f'🔕 Рассылка уведомлений игрокам остановлена.'
                               f'\n❗️Поток рассылки уведомлений для данного чата остановлен.\n'
@@ -76,22 +76,24 @@ def start_tag_players(call, chosen_players):
         with lock:
             MemoryStorage.get_instance(call.message.chat.id).subscribed_players = chosen_players
 
-        # Удалить задачу в schedule
-        if 'tag_players_job' in MemoryStorage.get_instance(call.message.chat.id).jobs_id.keys():
-            schedule.cancel_job(MemoryStorage.get_instance(call.message.chat.id).jobs_id.pop('tag_players_job'))
-        # Создать задачу в schedule
-        with lock:
-            if datetime.datetime.now().time() < datetime.time(23, 59):
-                MemoryStorage.get_instance(call.message.chat.id).jobs_id['tag_players_job'] = \
-                    schedule.every(20).seconds.do(send_notification,
+            # Удалить задачу в schedule
+            if 'tag_players_job' in MemoryStorage.get_instance(call.message.chat.id).started_jobs.keys():
+                schedule.cancel_job(
+                    MemoryStorage.get_instance(call.message.chat.id).started_jobs.pop('tag_players_job'))
+
+            # Создать задачу в schedule
+            if datetime.datetime.now().time() < datetime.time(23, 59, 59):
+                MemoryStorage.get_instance(call.message.chat.id).started_jobs['tag_players_job'] = \
+                    schedule.every(60).seconds.do(send_notification,
                                                   call.message,
                                                   header='🔔 Собираемся в Discord! Вы где?\n'
                                                          '\nСписок рассылки:',
                                                   show_unsubscribe_btn=True,
                                                   players_to_notify=MemoryStorage.get_instance(
                                                       call.message.chat.id).subscribed_players
-                                                  ).until("23:59")
-        # Если поток ещё не создавался
+                                                  ).until("23:59:59")
+
+        # Если поток ещё не создавался или завершён
         if not MemoryStorage.get_instance(call.message.chat.id).notification_thread \
                 or not MemoryStorage.get_instance(call.message.chat.id).notification_thread.is_alive():
             MemoryStorage.get_instance(call.message.chat.id).stop_event = threading.Event()
@@ -99,7 +101,7 @@ def start_tag_players(call, chosen_players):
                 threading.Thread(target=worker,
                                  args=(
                                      call.message,),
-                                 name='TagPlayersThread',
+                                 name='PlayersNotificationThread',
                                  daemon=True)
             MemoryStorage.get_instance(call.message.chat.id).notification_thread.start()
 
@@ -116,46 +118,48 @@ def start_tag_players(call, chosen_players):
 def start_tag_not_polled_players(message, not_polled_players):
     with lock:
         MemoryStorage.get_instance(message.chat.id).not_polled_players = not_polled_players
-    # Удалить задачу в schedule
-    if 'tag_not_polled_players_job' in MemoryStorage.get_instance(message.chat.id).jobs_id.keys():
-        schedule.cancel_job(MemoryStorage.get_instance(message.chat.id).jobs_id.pop('tag_not_polled_players_job'))
-    # Создать задачу в schedule
-    with lock:
+
+        # Удалить задачу в schedule
+        if 'tag_not_polled_players_job' in MemoryStorage.get_instance(message.chat.id).started_jobs.keys():
+            schedule.cancel_job(
+                MemoryStorage.get_instance(message.chat.id).started_jobs.pop('tag_not_polled_players_job'))
+
+        # Создать задачу в schedule
         # Бот инициирует автоматическое оповещение не проголосовавших игроков каждые 15 минут
-        if datetime.datetime.now().time() < datetime.time(22, 30):
-            MemoryStorage.get_instance(message.chat.id).jobs_id['tag_not_polled_players_job'] = \
+        if datetime.datetime.now().time() < datetime.time(22, 30, 00):
+            MemoryStorage.get_instance(message.chat.id).started_jobs['tag_not_polled_players_job'] = \
                 schedule.every(15).minutes.do(send_notification,
                                               message,
-                                              header='🔔 Проголосуйте в опросе!\n'
-                                                     '\nСледующие игроки не проголосовали в опросе:',
+                                              header='🔔 Проголосуйте в закреплённом опросе!\n'
+                                                     '\nСписок рассылки:',
                                               show_unsubscribe_btn=False,
                                               players_to_notify=MemoryStorage.get_instance(
                                                   message.chat.id).not_polled_players
-                                              ).until("22:30")
-    # Если поток ещё не создавался
+                                              ).until("22:30:00")
+
+    # Если поток ещё не создавался или завершён
     if not MemoryStorage.get_instance(message.chat.id).notification_thread \
             or not MemoryStorage.get_instance(message.chat.id).notification_thread.is_alive():
         MemoryStorage.get_instance(message.chat.id).stop_event = threading.Event()
         MemoryStorage.get_instance(message.chat.id).notification_thread = threading.Thread(target=worker,
                                                                                            args=(message,),
-                                                                                           name='TagPlayersThread',
+                                                                                           name='PlayersNotificationThread',
                                                                                            daemon=True)
         MemoryStorage.get_instance(message.chat.id).notification_thread.start()
 
 
 def send_notification(message, players_to_notify, header, show_unsubscribe_btn=False):
-    with lock:
-        if show_unsubscribe_btn:
-            keyboard = types.InlineKeyboardMarkup()
-            unsubscribe_btn = types.InlineKeyboardButton(text='Отписаться', callback_data='unsubscribe_btn')
-            keyboard.add(unsubscribe_btn)
+    if show_unsubscribe_btn:
+        keyboard = types.InlineKeyboardMarkup()
+        unsubscribe_btn = types.InlineKeyboardButton(text='Отписаться', callback_data='unsubscribe_btn')
+        keyboard.add(unsubscribe_btn)
 
-            bot.send_message(chat_id=message.chat.id,
-                             text=create_prompt(players_to_notify, header),
-                             reply_markup=keyboard)
-        else:
-            bot.send_message(chat_id=message.chat.id,
-                             text=create_prompt(players_to_notify, header))
+        bot.send_message(chat_id=message.chat.id,
+                         text=create_prompt(players_to_notify, header),
+                         reply_markup=keyboard)
+    else:
+        bot.send_message(chat_id=message.chat.id,
+                         text=create_prompt(players_to_notify, header))
 
 
 def create_prompt(players_to_notify, header):
@@ -169,42 +173,66 @@ def create_prompt(players_to_notify, header):
 
 def worker(message):
     while not MemoryStorage.get_instance(message.chat.id).stop_event.is_set():
-        # Если список рассылки subscribed_players пуст
         with lock:
-            subscribed_players_cnt = sum(MemoryStorage.get_instance(message.chat.id).subscribed_players.values())
-            not_polled_players_cnt = sum(MemoryStorage.get_instance(message.chat.id).not_polled_players.values())
-        if not subscribed_players_cnt:
-            if 'tag_players_job' in MemoryStorage.get_instance(message.chat.id).jobs_id.keys():
-                schedule.cancel_job(MemoryStorage.get_instance(message.chat.id).jobs_id.pop('tag_players_job'))
+            # Если список рассылки subscribed_players пуст, а задача в started_jobs есть
+            if not sum(MemoryStorage.get_instance(message.chat.id).subscribed_players.values()) and \
+                    'tag_players_job' in MemoryStorage.get_instance(message.chat.id).started_jobs.keys():
+
+                schedule.cancel_job(MemoryStorage.get_instance(message.chat.id).started_jobs.pop('tag_players_job'))
                 bot.send_message(chat_id=message.chat.id,
-                                 text='🔕 Задача рассылки уведомлений *выбранным* игрокам завершена.',
-                                 parse_mode='Markdown')
-        if not not_polled_players_cnt:
-            if 'tag_not_polled_players_job' in MemoryStorage.get_instance(message.chat.id).jobs_id.keys():
+                                 text='🔕 Задача рассылки уведомлений выбранным игрокам завершена.')
+
+            # Если задача завершилась по timeout (условие .until()) и в schedule.jobs её нет
+            elif 'tag_players_job' in MemoryStorage.get_instance(message.chat.id).started_jobs.keys() and \
+                    MemoryStorage.get_instance(message.chat.id).started_jobs['tag_players_job'] not in schedule.jobs:
+
+                MemoryStorage.get_instance(message.chat.id).subscribed_players = {}
+                del MemoryStorage.get_instance(message.chat.id).started_jobs['tag_players_job']
+
+                bot.send_message(chat_id=message.chat.id,
+                                 text='🔕 Задача рассылки уведомлений выбранным игрокам завершена (timeout).')
+
+            # Если список рассылки not_polled_players пуст, а задача в started_jobs есть
+            if not sum(MemoryStorage.get_instance(message.chat.id).not_polled_players.values()) and \
+                    'tag_not_polled_players_job' in MemoryStorage.get_instance(message.chat.id).started_jobs.keys():
+
                 schedule.cancel_job(
-                    MemoryStorage.get_instance(message.chat.id).jobs_id.pop('tag_not_polled_players_job'))
+                    MemoryStorage.get_instance(message.chat.id).started_jobs.pop('tag_not_polled_players_job'))
                 bot.send_message(chat_id=message.chat.id,
-                                 text='🔕 Задача рассылки уведомлений *не проголосовавшим* игрокам завершена.',
-                                 parse_mode='Markdown')
-        # Если более нет активных задач
-        if not MemoryStorage.get_instance(message.chat.id).jobs_id:
-            MemoryStorage.get_instance(message.chat.id).stop_event.set()
+                                 text='🔕 Задача рассылки уведомлений не проголосовавшим игрокам завершена.')
+
+            # Если задача завершилась по timeout (условие .until()) и в schedule.jobs её нет
+            elif 'tag_not_polled_players_job' in MemoryStorage.get_instance(message.chat.id).started_jobs.keys() and \
+                    MemoryStorage.get_instance(message.chat.id).started_jobs[
+                        'tag_not_polled_players_job'] not in schedule.jobs:
+
+                MemoryStorage.get_instance(message.chat.id).not_polled_players = {}
+                del MemoryStorage.get_instance(message.chat.id).started_jobs['tag_not_polled_players_job']
+
+                bot.send_message(chat_id=message.chat.id,
+                                 text='🔕 Задача рассылки уведомлений не проголосовавшим игрокам завершена (timeout).')
+
+            # Если более нет активных задач
+            if not MemoryStorage.get_instance(message.chat.id).started_jobs:
+                MemoryStorage.get_instance(message.chat.id).stop_event.set()
+
         schedule.run_pending()
         time.sleep(1)
 
 
 def unsubscribe_player(call):
     with lock:
-        if str(call.from_user.id) in MemoryStorage.get_instance(call.message.chat.id).subscribed_players.keys() and \
+        if 'tag_players_job' not in MemoryStorage.get_instance(call.message.chat.id).started_jobs.keys():
+            bot.send_message(chat_id=call.message.chat.id,
+                             text=f'❗@{call.from_user.username}, список рассылки пуст. Задача рассылки уведомлений '
+                                  f'выбранным игрокам завершена или не создана.')
+        elif str(call.from_user.id) in MemoryStorage.get_instance(call.message.chat.id).subscribed_players.keys() and \
                 MemoryStorage.get_instance(call.message.chat.id).subscribed_players[str(call.from_user.id)]:
             with threading.Lock():
                 MemoryStorage.get_instance(call.message.chat.id).subscribed_players[str(call.from_user.id)] = False
             bot.send_message(chat_id=call.message.chat.id,
                              text=f'❕Игрок @{call.from_user.username} отписался от уведомлений.')
-        elif 'tag_players_job' not in MemoryStorage.get_instance(call.message.chat.id).jobs_id.keys():
-            bot.send_message(chat_id=call.message.chat.id,
-                             text=f'❗@{call.from_user.username}, задача рассылки уведомлений выбранным игрокам на '
-                                  f'данный момент не активна.')
+
         else:
             bot.send_message(chat_id=call.message.chat.id,
                              text=f'❕Игрок @{call.from_user.username} не находится в текущем списке '
@@ -213,7 +241,9 @@ def unsubscribe_player(call):
 
 def unsubscribe_polled_player(chat_id, user):
     with lock:
-        if not MemoryStorage.get_instance(chat_id).not_polled_players[str(user.id)]:
+        if 'tag_not_polled_players_job' not in MemoryStorage.get_instance(chat_id).started_jobs.keys():
+            pass
+        elif not MemoryStorage.get_instance(chat_id).not_polled_players[str(user.id)]:
             bot.send_message(chat_id=chat_id,
                              text=f'❕Игрок {get_players()[user.id][0]} изменил своё решение в опросе.')
         else:
@@ -222,11 +252,22 @@ def unsubscribe_polled_player(chat_id, user):
                              text=f'❕Игрок {get_players()[user.id][0]} проголосовал в опросе.')
 
 
+# Если игрок отозвал голос
+def subscribe_retracted_player(chat_id, user):
+    with lock:
+        if 'tag_not_polled_players_job' in MemoryStorage.get_instance(chat_id).started_jobs.keys():
+            MemoryStorage.get_instance(chat_id).not_polled_players[str(user.id)] = True
+            bot.send_message(chat_id=chat_id,
+                             text=f'❕Игрок {get_players()[user.id][0]} отозвал голос.')
+
+
 def stop_thread(message):
     MemoryStorage.get_instance(message.chat.id).stop_event.set()
-    # Удалить задачи в schedule
-    for job_name in list(MemoryStorage.get_instance(message.chat.id).jobs_id.keys()):
-        schedule.cancel_job(MemoryStorage.get_instance(message.chat.id).jobs_id.pop(job_name))
+    with lock:
+        # Удалить задачи в schedule
+        for job_name in list(MemoryStorage.get_instance(message.chat.id).started_jobs.keys()):
+            schedule.cancel_job(MemoryStorage.get_instance(message.chat.id).started_jobs.pop(job_name))
+
     MemoryStorage.get_instance(message.chat.id).notification_thread.join()  # Дождаться завершения потока
     MemoryStorage.get_instance(message.chat.id).notification_thread = None
     MemoryStorage.get_instance(message.chat.id).stop_event = None
