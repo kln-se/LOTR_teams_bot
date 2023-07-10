@@ -1,3 +1,6 @@
+import threading
+
+
 class MemoryStorage:
     instances = {}  # unique instance for each chat
     polls_locations = {}
@@ -16,6 +19,9 @@ class MemoryStorage:
         self.started_jobs = {}
         self.notification_thread = None
         self.stop_event = None
+        self.lock = threading.Lock()
+        self.tag_players_msg_id = None
+        self.not_polled_players_msg_id = None
 
         # teams.py
         self.players_to_play = {}
