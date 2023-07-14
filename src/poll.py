@@ -81,6 +81,7 @@ def handle_poll_answer(poll_answer):
     elif user_id not in get_players().keys():
         pass
     elif option_ids and poll_id == MemoryStorage.get_instance(chat_id).last_poll_id:
+        MemoryStorage.get_instance(chat_id).last_poll_results[user_id] = option_ids
         unsubscribe_polled_player(chat_id, poll_answer.user)
     elif option_ids and poll_id != MemoryStorage.get_instance(chat_id).last_poll_id:
         bot.send_message(chat_id=chat_id,
@@ -88,4 +89,5 @@ def handle_poll_answer(poll_answer):
                               f'который закреплён в шапке чата!')
     # При отзыве игроком голоса (Retract vote) option_ids = []
     elif not option_ids and poll_id == MemoryStorage.get_instance(chat_id).last_poll_id:
+        MemoryStorage.get_instance(chat_id).last_poll_results[user_id] = []
         subscribe_retracted_player(chat_id, poll_answer.user)

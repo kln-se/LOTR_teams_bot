@@ -2,7 +2,6 @@
 /.idea/
 /errors.log
 /statistics_data/
-/Scheme.vsdx
 /sql_scripts/
 /lotr_teams_db
 /create_config.py

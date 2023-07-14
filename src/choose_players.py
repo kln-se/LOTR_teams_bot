@@ -8,6 +8,7 @@ bot = get_bot_instance()
 
 @bot.callback_query_handler(func=lambda call: call.data == 'choose_players_btn')
 def handle_choose_players_btn(call):
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
     choose_players(call.message)
 
 
@@ -64,11 +65,11 @@ def handle_finish_players_choice_btn(call):
     if callback_func:
         callback_func(call, MemoryStorage.get_instance(call.message.chat.id).chosen_players)
     else:
-        bot.reply_to(call.message, '❗️Команда не определена. Выберите команду из списка /help.')
+        bot.reply_to(call.message, '❗️Начальная команда не определена. Выберите команду из списка /help.')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'choose_all_btn')
-def handle_finish_players_choice_btn(call):
+def handle_choose_all_btn(call):
     players = get_players()
 
     updated_keyboard = types.InlineKeyboardMarkup()
@@ -100,15 +101,77 @@ def handle_last_poll_participants_btn(call):
             else:
                 polled_players[str(player_id)] = False
 
-        bot.send_message(chat_id=call.message.chat.id,
-                         text=f'Судя по опросу игроков будет: *{len(polled_players)}* '
-                              f'(проголосовали за любой из вариантов ответа "Буду, ...")',
-                         parse_mode='Markdown')
-
         callback_func = MemoryStorage.get_instance(call.message.chat.id).callback_func_ref
         if callback_func:
             callback_func(call, polled_players)
     else:
         bot.send_message(chat_id=call.message.chat.id,
-                         text='❗️Опросный лист пуст.\n'
+                         text='❗️Опросный лист пуст.'
                               '\nНеобходимо создать новый опрос.')
+
+
+def choose_winners(message):
+    players = get_players()
+    MemoryStorage.get_instance(message.chat.id).chosen_players = {}
+
+    keyboard = types.InlineKeyboardMarkup()
+    for player_id in players:
+        temp_win_btn = types.InlineKeyboardButton(text="☐ " + players[player_id][1],
+                                                  callback_data=str(player_id) + '1')  # player_id + '1', если winner
+        temp_lose_btn = types.InlineKeyboardButton(text="☐ " + players[player_id][1],
+                                                   callback_data=str(player_id) + '0')  # player_id + '0', если loser
+        keyboard.add(temp_win_btn, temp_lose_btn)
+        MemoryStorage.get_instance(message.chat.id).chosen_players[str(player_id)] = None
+    finish_players_choice_btn = types.InlineKeyboardButton(text="«Готово»", callback_data='finish_players_choice_btn')
+    keyboard.add(finish_players_choice_btn)
+
+    bot.send_message(chat_id=message.chat.id,
+                     text='Выберите победителей и проигравших:',
+                     reply_markup=keyboard)
+
+
+@bot.callback_query_handler(
+    func=lambda call: call.data[:-1] in MemoryStorage.get_instance(call.message.chat.id).chosen_players)
+def handle_winner_choice(call):
+    players = get_players()
+    # Если нажата win_btn
+    if int(call.data[-1]):
+        # Игрок уже отнесён к winner
+        if MemoryStorage.get_instance(call.message.chat.id).chosen_players[call.data[:-1]]:
+            MemoryStorage.get_instance(call.message.chat.id).chosen_players[call.data[:-1]] = None
+        # Игрок не отнесён ни к winner, ни к loser или является loser
+        else:
+            MemoryStorage.get_instance(call.message.chat.id).chosen_players[call.data[:-1]] = True
+    # Если нажата lose_btn
+    else:
+        # Игрок уже отнесён к loser
+        if MemoryStorage.get_instance(call.message.chat.id).chosen_players[call.data[:-1]] is False:
+            MemoryStorage.get_instance(call.message.chat.id).chosen_players[call.data[:-1]] = None
+        # Игрок не отнесён ни к winner, ни к loser или является loser
+        else:
+            MemoryStorage.get_instance(call.message.chat.id).chosen_players[call.data[:-1]] = False
+
+    updated_keyboard = types.InlineKeyboardMarkup()
+    for player_id in MemoryStorage.get_instance(call.message.chat.id).chosen_players:
+        if MemoryStorage.get_instance(call.message.chat.id).chosen_players[player_id] is None:
+            temp_win_btn = types.InlineKeyboardButton(text="☐ " + players[int(player_id)][1],
+                                                      callback_data=player_id + '1')
+            temp_lose_btn = types.InlineKeyboardButton(text="☐ " + players[int(player_id)][1],
+                                                       callback_data=player_id + '0')
+        elif MemoryStorage.get_instance(call.message.chat.id).chosen_players[player_id]:
+            temp_win_btn = types.InlineKeyboardButton(text="🏆 " + players[int(player_id)][1],
+                                                      callback_data=player_id + '1')
+            temp_lose_btn = types.InlineKeyboardButton(text="☐ " + players[int(player_id)][1],
+                                                       callback_data=player_id + '0')
+        else:
+            temp_win_btn = types.InlineKeyboardButton(text="☐ " + players[int(player_id)][1],
+                                                      callback_data=player_id + '1')
+            temp_lose_btn = types.InlineKeyboardButton(text="💀 " + players[int(player_id)][1],
+                                                       callback_data=player_id + '0')
+        updated_keyboard.add(temp_win_btn, temp_lose_btn)
+    finish_players_choice_btn = types.InlineKeyboardButton(text="«Готово»", callback_data='finish_players_choice_btn')
+    updated_keyboard.add(finish_players_choice_btn)
+
+    bot.edit_message_reply_markup(call.message.chat.id,
+                                  call.message.message_id,
+                                  reply_markup=updated_keyboard)

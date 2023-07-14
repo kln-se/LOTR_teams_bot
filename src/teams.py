@@ -43,6 +43,8 @@ def handle_teams_x_btn(call):
         bot.send_message(chat_id=call.message.chat.id,
                          text='❗Выбранное количество команд превышает количество игроков.')
     else:
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+
         keyboard = types.InlineKeyboardMarkup()
         ignore_rating_btn = types.InlineKeyboardButton(text='Без учёта рейтинга', callback_data='ignore_rating_btn')
         consider_rating_btn = types.InlineKeyboardButton(text='С учётом рейтинга', callback_data='consider_rating_btn')
@@ -106,9 +108,6 @@ def handle_regen_teams_btn(call):
 
 
 def choose_team_num(call, chosen_players):
-    MemoryStorage.get_instance(call.message.chat.id).teams_count = None
-    MemoryStorage.get_instance(call.message.chat.id).players_to_play = chosen_players
-
     players_count = sum(chosen_players.values())
 
     if players_count < 2:
@@ -117,6 +116,10 @@ def choose_team_num(call, chosen_players):
                               f'\nТекущее количество выбранных игроков: *{players_count}* (необходимо 2 и более).',
                          parse_mode='Markdown')
     else:
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+        MemoryStorage.get_instance(call.message.chat.id).players_to_play = chosen_players
+        MemoryStorage.get_instance(call.message.chat.id).teams_count = None
+
         keyboard = types.InlineKeyboardMarkup()
         teams_2_btn = types.InlineKeyboardButton(text='2', callback_data='teams_2_btn')
         teams_3_btn = types.InlineKeyboardButton(text='3', callback_data='teams_3_btn')
@@ -178,11 +181,12 @@ def create_random_teams(players_to_play, num_teams: int, consider_rating: bool =
         Данная функция составляет словарь, где ключ это player_id, а значение - количество его побед.
         :return: Словарь с количеством побед каждого игрока на текущий момент.
         """
-        players_power = {}
+        current_players_power = {}
         df = load_df('statistics_data/statistics.csv')
-        for i in range(3, df.shape[1]):
-            players_power[int(df.columns[i])] = df.iloc[-1, i]
-        return players_power
+        for player_id in players_to_play:
+            current_players_power[int(player_id)] = df[player_id].sum()
+
+        return current_players_power
 
     def print_result_rating_ignored(random_teams):
         """
@@ -207,16 +211,20 @@ def create_random_teams(players_to_play, num_teams: int, consider_rating: bool =
         :return: Готовая строка для вывода в выбранном сообщении.
         """
         teams_power = get_teams_power(balanced_teams)
-        s = ""
-        for idx, team in enumerate(balanced_teams):
-            s += "Команда {0}: 🦾 *{1}*\n".format(str(idx + 1), teams_power[idx])
+        teams_power_diff = get_teams_power_diff(teams_power)
+        s = ''
+        for i, team in enumerate(balanced_teams):
+            temp_team_experience = round(abs(teams_power[i]), 1)
+            temp_team_efficiency = round(math.atan2(teams_power[i].real, teams_power[i].imag) / math.pi * 180, 1)
+            s += 'Команда {0}: ⚔️️ *{1}* 💪 *{2}°*\n'.format(str(i + 1), temp_team_experience, temp_team_efficiency)
             temp_team = []
             for player_id in team:
-                temp_team.append((players[player_id][1], players_power[player_id]))
+                temp_team.append(players[player_id][1])
             temp_team.sort()
-            s += ''.join(
-                ['\t- {0} 🏆 {1}\n'.format(player[0], player[1]) for player in temp_team])
-        return s[:-1]
+            s += ''.join([f'\t- {player_name}\n' for player_name in temp_team])
+
+        s += f'\nИтоговая разница в силе команд: 🤼‍♂️ *{round(teams_power_diff, 2)}*'
+        return s
 
     def get_teams_power(current_teams):
         """
@@ -231,6 +239,17 @@ def create_random_teams(players_to_play, num_teams: int, consider_rating: bool =
             teams_power.append(temp_team_power)
         return teams_power
 
+    def get_teams_power_diff(current_teams_powers):
+        """
+        Данная функция вычисляет сумму модуля разниц в силе каждой команды между друг другом.
+        :return: Сумма разниц в силе каждой команды между друг другом.
+        """
+        power_diff = 0
+        for i in range(len(current_teams_powers)):
+            for j in range(i + 1, len(current_teams_powers)):
+                power_diff += abs(current_teams_powers[i] - current_teams_powers[j])
+        return power_diff
+
     def simulated_annealing(random_teams):
         """
         Данная функция реализует алгоритм имитации отжига для формирования сбалансированных команд.
@@ -242,17 +261,6 @@ def create_random_teams(players_to_play, num_teams: int, consider_rating: bool =
         T_min = 1  # Минимальная температура
         alpha = 0.9  # Коэффициент охлаждения
         max_iter = 1000  # Максимальное число итераций
-
-        def get_teams_power_diff(current_teams_powers):
-            """
-            Данная функция вычисляет сумму модуля разниц в силе каждой команды между друг другом.
-            :return: Сумма разниц в силе каждой команды между друг другом.
-            """
-            power_diff = 0
-            for i in range(len(current_teams_powers)):
-                for j in range(i + 1, len(current_teams_powers)):
-                    power_diff += abs(current_teams_powers[i] - current_teams_powers[j])
-            return power_diff
 
         # Вычисляем начальную разницу между силами команд
         teams_powers = get_teams_power(random_teams)

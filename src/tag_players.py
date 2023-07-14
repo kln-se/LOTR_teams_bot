@@ -73,6 +73,7 @@ def handle_unsubscribe_btn(call):
 
 
 def start_tag_players(call, chosen_players):
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
     chat_inst = MemoryStorage.get_instance(call.message.chat.id)
     if chosen_players:
         with chat_inst.lock:
