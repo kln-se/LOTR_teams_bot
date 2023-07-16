@@ -52,7 +52,8 @@ def plot_statistics(df, players):
     # Bar plot
     x_labels = [players[player_id][1] for player_id in players]
     ax1.bar(x_labels, wins, align='edge', width=-0.2, color=colors, hatch=hatches, edgecolor='white')
-    ax1.bar(x_labels, loses, align='edge', width=0.125, color='black', edgecolor='white', label='Количество поражений')
+    ax1.bar(x_labels, loses, align='edge', width=0.125, hatch='////',
+            color='white', edgecolor='black', label='Количество поражений')
 
     # Line plot
     def calculate_percent(x):
@@ -81,7 +82,10 @@ def plot_statistics(df, players):
         im = int(player_statistic.imag)
         experience = round(abs(player_statistic), 1)
         efficiency = round(math.atan2(re, im) / math.pi * 180, 1)
-        win_percent = round(re / (re + im) * 100, 1)
+        if re:
+            win_percent = round(re / (re + im) * 100, 1)
+        else:
+            win_percent = 0
         ax3.quiver(0, 0, im, re,
                    angles='xy',
                    scale_units='xy',
@@ -95,7 +99,10 @@ def plot_statistics(df, players):
             re_max = re
         if im > im_max:
             im_max = im
+
+    if re_max:
         ax3.set_ylim([0, re_max + 0.3 * re_max])
+    if im_max:
         ax3.set_xlim([0, im_max + 0.3 * im_max])
 
     ax1.legend()
